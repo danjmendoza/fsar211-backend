@@ -9,7 +9,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
-    last_name: Mapped[Optional[str]] = None
+    # last_name: Mapped[Optional[str]] = None
     resource_type: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

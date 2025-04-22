@@ -4,6 +4,7 @@ from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
+import settings
 
 from alembic import context
 from user.models import *
@@ -40,7 +41,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url", "postgresql+asyncpg://postgres:changethis@db:5433/fsar211")
+    url = config.get_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URL)
     context.configure(
         url=url,
         target_metadata=target_metadata,
