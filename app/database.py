@@ -2,9 +2,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-SQLALCHEMY_DATABASE_URL = 'postgresql://postgres:changethis@db:5432/fsar211'
-# SQLALCHEMY_DATABASE_URL = 'postgresql://postgres:Bright#1270@localhost:5433/dockert
-    
+SQLALCHEMY_DATABASE_URL = 'postgresql://postgres:changethis@db:5433/fsar211'
+
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
