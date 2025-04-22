@@ -1,28 +1,14 @@
-from typing import Optional
+from typing import Optional, List
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from starlette import status
+from sqlalchemy.orm import Session
+import Schema
+from models.user import User
+from database import get_db, Base, engine
 
-
-users = {
-    531: {
-        "id": 531,
-        "name": "Dan Mendoza",
-        "resource_type": "Fremont Search And Rescue"
-    }
-}
-
-time_logs = [
-    {
-        "id": 531,
-        "name": "Dan Mendoza",
-        "resource_type": "FSAR",
-        "date_in": "June 3rd 2025",
-        "time_in": "0800",
-        "date_out": "June 3rd 2025",
-        "time_out": "1000"
-    }
-]
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
@@ -43,6 +29,22 @@ app.add_middleware(
 @app.get("/", tags=["root"])
 async def read_root() -> dict:
     return {"Hello": "Welcome to the 211"}
+
+@app.get("/user", response_model=List[Schema.CreateUser])
+def get_users(db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    return users
+
+@app.post('/user', status_code=status.HTTP_201_CREATED, response_model=List[Schema.CreateUser])
+def post_user(user:Schema.CreateUser, db:Session = Depends(get_db)):
+    new_user = User(**user.dict())
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return [new_user]
+
+
 
 @app.get("/time_log", tags=['time_log'])
 async def get_time_log() -> dict:

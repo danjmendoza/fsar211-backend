@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:14
+    image: postgres:14-alpine
     restart: always
     healthcheck:
       # test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
@@ -10,6 +10,8 @@ services:
       timeout: 10s
     volumes:
       - app-db-data:/var/lib/postgresql/data/pgdata
+    expose:
+      - ${POSTGRES_PORT}
     env_file:
       - .env
     environment:
@@ -24,6 +26,8 @@ services:
       - ./app:/app
     ports:
     - 8000:8000
+    depends_on:
+      - db
 
 volumes:
   app-db-data:
