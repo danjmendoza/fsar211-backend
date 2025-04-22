@@ -1,5 +1,6 @@
 import datetime
 from typing import AsyncGenerator
+import settings
 from sqlalchemy import create_engine, DateTime, MetaData
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
@@ -10,11 +11,9 @@ from sqlalchemy.ext.asyncio import(
     create_async_engine
 )
 
-SQLALCHEMY_DATABASE_URL = 'postgresql+asyncpg://postgres:changethis@db:5433/fsar211'
-
 engine = create_async_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    echo=True
+    settings.SQLALCHEMY_DATABASE_URL, 
+    echo=settings.SQLALCHEMY_ECHO
 )
 
 
