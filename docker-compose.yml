@@ -3,7 +3,7 @@ services:
     image: postgres:14-alpine
     restart: always
     healthcheck:
-      # test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER} -d ${PG_DB}"]
       interval: 10s
       retries: 5
       start_period: 30s
@@ -29,6 +29,7 @@ services:
       - ./app:/app
     ports:
       - ${BACKEND_PORT}:8000
+    tty: true
     depends_on:
       - db
     env_file:
