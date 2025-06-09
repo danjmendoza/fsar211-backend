@@ -1,13 +1,19 @@
 import asyncio
 from logging.config import fileConfig
+import sys
+from pathlib import Path
+
+# Add the app directory to the Python path
+app_path = Path(__file__).parent.parent
+sys.path.append(str(app_path))
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
-import settings
 
 from alembic import context
-from user.models import *
+from db import Base
+from user.models import User  # Import models explicitly
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -18,9 +24,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-from db import Base
+# Set target metadata
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

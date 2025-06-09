@@ -1,21 +1,21 @@
 from datetime import datetime
 from db import Base
-from sqlalchemy import func, Column, Integer, String, TIMESTAMP, Boolean, text
+from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
-from typing import Optional
 
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str]
-    # last_name: Mapped[Optional[str]] = None
-    resource_type: Mapped[str]
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(nullable=False)
+    resource_type: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(), onupdate=func.now()
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False
     )
-    deleted_at: Mapped[datetime | None]
+    deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     def __repr__(self) -> str:
         return f"User(id={self.id})"

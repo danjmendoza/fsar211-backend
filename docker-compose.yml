@@ -11,10 +11,9 @@ services:
     volumes:
       - app-db-data:/var/lib/postgresql/data/pgdata
     ports:
-      - "${PG_PORT}:${PG_PORT}"
+      - "5433:5432"
     expose:
-      - "${PG_PORT}"
-    command: -p ${PG_PORT}
+      - "5432"
     env_file:
       - .env
     environment:
@@ -29,6 +28,13 @@ services:
       - ./app:/app
     ports:
       - ${BACKEND_PORT}:8000
+    environment:
+      - PG_HOST=db
+      - PG_PORT=5432
+      - PG_USER=${PG_USER}
+      - PG_PASSWORD=${PG_PASSWORD}
+      - PG_DB=${PG_DB}
+      - SQLALCHEMY_ECHO=true
     tty: true
     depends_on:
       - db
