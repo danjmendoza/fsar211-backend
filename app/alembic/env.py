@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 from db import Base
+import settings  # Import settings module
 from user.models import User  # Import models explicitly
 
 # this is the Alembic Config object, which provides
@@ -43,9 +44,11 @@ def run_migrations_offline() -> None:
 
     Calls to context.execute() here emit the given string to the
     script output.
-
     """
-    url = config.get_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URL)
+    # Override sqlalchemy.url with the URL from environment variables
+    config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URL)
+    
+    url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -67,9 +70,10 @@ def do_run_migrations(connection: Connection) -> None:
 async def run_async_migrations() -> None:
     """In this scenario we need to create an Engine
     and associate a connection with the context.
-
     """
-
+    # Override sqlalchemy.url with the URL from environment variables
+    config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URL)
+    
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
