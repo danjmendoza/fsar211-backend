@@ -13,7 +13,8 @@ from sqlalchemy.ext.asyncio import(
 
 engine = create_async_engine(
     settings.SQLALCHEMY_DATABASE_URL, 
-    echo=settings.SQLALCHEMY_ECHO
+    echo=settings.SQLALCHEMY_ECHO,
+    connect_args={"ssl": False}
 )
 
 
