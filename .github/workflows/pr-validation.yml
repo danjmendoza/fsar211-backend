@@ -81,6 +81,13 @@ jobs:
 
     - name: Run Tests
       id: pytest
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        PG_USER: test
+        PG_PASSWORD: test
+        PG_DB: test
+        PG_HOST: localhost
+        PG_PORT: 5432
       run: |
         # Start PostgreSQL
         docker run -d \
@@ -99,11 +106,9 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
 
-        # Run tests
-        echo 'TEST_OUTPUT<<EOF' >> $GITHUB_ENV
-        PYTHONPATH=$PWD PG_USER=test PG_PASSWORD=test PG_DB=test PG_HOST=localhost PG_PORT=5432 pytest -v >> test_output.txt 2>&1
-        cat test_output.txt >> $GITHUB_ENV
-        echo 'EOF' >> $GITHUB_ENV
+        # Run tests and capture output
+        pytest_output=$(pytest -v 2>&1)
+        echo "test_output=$pytest_output" >> $GITHUB_OUTPUT
 
     - name: Calculate build time
       id: build_time
@@ -132,7 +137,7 @@ jobs:
 
           ### Tests
           \`\`\`
-          ${{ env.TEST_OUTPUT }}
+          ${{ steps.pytest.outputs.test_output }}
           \`\`\`
 
           ### Docker Build
