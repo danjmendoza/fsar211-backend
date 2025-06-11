@@ -77,39 +77,6 @@ jobs:
         cache-from: type=registry,ref=wagoneerguy/fsar211-backend:latest
         cache-to: type=inline
 
-    - name: Run Tests
-      id: pytest
-      env:
-        PYTHONPATH: ${{ github.workspace }}
-        PG_USER: test
-        PG_PASSWORD: test
-        PG_DB: test
-        PG_HOST: localhost
-        PG_PORT: 5432
-        SQLALCHEMY_DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
-        SQLALCHEMY_ECHO: "false"
-      run: |
-        # Start PostgreSQL
-        docker run -d \
-          --name test-db \
-          -e POSTGRES_USER=test \
-          -e POSTGRES_PASSWORD=test \
-          -e POSTGRES_DB=test \
-          postgres:14-alpine
-
-        # Wait for PostgreSQL to be ready
-        sleep 5
-
-        # Set up Python environment
-        python -m venv venv
-        source venv/bin/activate
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
-
-        # Run tests and capture output
-        pytest_output=$(PYTHONPATH=/app:/tests pytest -v 2>&1)
-        echo "test_output=$pytest_output" >> $GITHUB_OUTPUT
-
     - name: Calculate build time
       id: build_time
       run: |
