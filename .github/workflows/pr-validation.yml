@@ -53,6 +53,7 @@ jobs:
         docker run -d \
           --name test-db \
           --network test-network \
+          -p 5432:5432 \
           -e POSTGRES_USER=test \
           -e POSTGRES_PASSWORD=test \
           -e POSTGRES_DB=test \
@@ -63,11 +64,16 @@ jobs:
         for i in {1..30}; do
           if docker exec test-db pg_isready -U test > /dev/null 2>&1; then
             echo "PostgreSQL is ready!"
+            # Wait a bit more for full initialization
+            sleep 5
             break
           fi
           echo "Waiting..."
           sleep 1
         done
+
+        # Initialize database schema
+        docker exec test-db psql -U test -d test -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
 
         # Run tests in Docker with error handling
         echo "Running tests..."
