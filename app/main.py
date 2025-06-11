@@ -20,4 +20,4 @@ app.add_middleware(
 
 @app.get("/", tags=["root"])
 async def read_root() -> dict:
-    return {"Hello": "Welcome to the 211."}
+    return {"Hello": "Welcome to the 211.", "version": "1.0.0"}
