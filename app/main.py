@@ -25,7 +25,5 @@ app.add_middleware(
 @app.get("/", tags=["root"])
 async def read_root() -> dict:
     return {
-        "Hello": "Welcome to the 211 some chagne in the code",
-        "and": "then some masdfcore change",
-        "or": "then some more change"
+        "Hello": "Welcome to the 211 some chagne in the code"
     }
