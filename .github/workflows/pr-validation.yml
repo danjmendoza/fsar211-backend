@@ -30,9 +30,9 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install ruff pytest
-        pip install -r requirements.txt
+        python -m pip install --no-cache-dir --upgrade pip 2>&1 | grep -v "DEPRECATION\|WARNING\|NOTICE"
+        pip install --no-cache-dir -r requirements.txt 2>&1 | grep -v "DEPRECATION\|WARNING\|NOTICE"
+        pip install --no-cache-dir -r requirements-dev.txt 2>&1 | grep -v "DEPRECATION\|WARNING\|NOTICE"
 
     - name: Run linting
       id: lint
@@ -43,22 +43,80 @@ jobs:
         echo "$LINT_OUTPUT" >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
 
+    - name: Create test network
+      run: docker network create test-network
+
     - name: Run tests
       id: test
       run: |
-        echo "Running pytest..."
-        mkdir -p test-results
-        TEST_OUTPUT=$(pytest -v --junitxml=test-results/junit.xml || true)
+        # Start PostgreSQL
+        docker run -d \
+          --name test-db \
+          --network test-network \
+          -e POSTGRES_USER=test \
+          -e POSTGRES_PASSWORD=test \
+          -e POSTGRES_DB=test \
+          postgres:14-alpine
+
+        # Wait for PostgreSQL to be ready
+        echo "Waiting for PostgreSQL to be ready..."
+        for i in {1..30}; do
+          if docker exec test-db pg_isready -U test > /dev/null 2>&1; then
+            echo "PostgreSQL is ready!"
+            # Wait a bit more for full initialization
+            sleep 5
+            break
+          fi
+          echo "Waiting..."
+          sleep 1
+        done
+
+        # Initialize database schema
+        docker exec test-db psql -U test -d test -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+
+        # Run tests in Docker with error handling
+        echo "Running tests..."
+        if ! docker run \
+          --rm \
+          --network test-network \
+          -v ${PWD}:/workspace \
+          -w /workspace \
+          -e PG_HOST=test-db \
+          -e PG_PORT=5432 \
+          -e PG_USER=test \
+          -e PG_PASSWORD=test \
+          -e PG_DB=test \
+          -e PYTHONPATH=/workspace/app:/workspace/tests \
+          python:3.11 \
+          /bin/bash -c "\
+            python -m venv /venv && \
+            . /venv/bin/activate && \
+            pip install --no-cache-dir --upgrade pip && \
+            pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt && \
+            mkdir -p test-results && \
+            pytest -v --junitxml=test-results/junit.xml\
+          " 2>&1 | tee test_output.txt; then
+          echo "Tests failed. See output above."
+          exit 1
+        fi
+
         echo "TEST_RESULT<<EOF" >> $GITHUB_ENV
-        echo "$TEST_OUTPUT" >> $GITHUB_ENV
+        cat test_output.txt >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
+
+    - name: Cleanup Docker resources
+      if: always()
+      run: |
+        docker stop test-db || true
+        docker rm test-db || true
+        docker network rm test-network || true
       
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-        
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
       
@@ -71,6 +129,7 @@ jobs:
       uses: docker/build-push-action@v4
       with:
         context: .
+        load: true  # Load the image locally for testing
         push: false  # Don't push to registry, just build to verify
         tags: wagoneerguy/fsar211-backend:pr-${{ github.event.pull_request.number }}
         cache-from: type=registry,ref=wagoneerguy/fsar211-backend:latest
@@ -84,68 +143,3 @@ jobs:
         build_duration=$((end_time - start_time))
         echo "duration=$build_duration" >> $GITHUB_OUTPUT
         echo "duration_formatted=$(date -u -d @${build_duration} +%M:%S)" >> $GITHUB_OUTPUT
-
-    - name: Comment PR
-      uses: actions/github-script@v6
-      if: always()
-      with:
-        script: |
-          const statusEmoji = {success: '✅', failure: '❌', cancelled: '⚠️'};
-          const status = '${{ job.status }}'.toLowerCase();
-          const emoji = statusEmoji[status] || '❓';
-
-          const message = `## Validation Results ${emoji}
-
-          ### Linting
-          \`\`\`
-          ${{ env.LINT_RESULT }}
-          \`\`\`
-
-          ### Tests
-          \`\`\`
-          ${{ env.TEST_RESULT }}
-          \`\`\`
-
-          ### Docker Build
-          - 🕒 Build time: ${{ steps.build_time.outputs.duration_formatted }}
-          - 📦 Image: \`wagoneerguy/fsar211-backend:pr-${{ github.event.pull_request.number }}\`
-
-          ${status === 'success' ? '✨ All checks passed! Ready for review.' : '⚠️ Some checks failed. Please review the results above.'}`;
-
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: message
-          })
-
-    - name: Notify Slack
-      if: always()
-      env:
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-      run: |
-        if [ -n "$SLACK_WEBHOOK" ]; then
-          # Prepare status emoji
-          if [ "${{ job.status }}" == "success" ]; then
-            STATUS_EMOJI=":white_check_mark:"
-          elif [ "${{ job.status }}" == "failure" ]; then
-            STATUS_EMOJI=":x:"
-          else
-            STATUS_EMOJI=":warning:"
-          fi
-
-          # Send notification
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{
-              \"blocks\": [
-                {
-                  \"type\": \"section\",
-                  \"text\": {
-                    \"type\": \"mrkdwn\",
-                    \"text\": \"${STATUS_EMOJI} *PR Validation Results*\n>*PR:* #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}\n>*Status:* ${{ job.status }}\n>*Build Time:* ${{ steps.build_time.outputs.duration_formatted }}\n>*Author:* ${{ github.event.pull_request.user.login }}\n\"
-                  }
-                }
-              ]
-            }" \
-            $SLACK_WEBHOOK
-        fi

@@ -1,10 +1,10 @@
-ARG TARGETPLATFORM
-FROM --platform=$TARGETPLATFORM tiangolo/uvicorn-gunicorn-fastapi:python3.11
+FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11
 
 # Install dependencies
-COPY requirements.txt requirements.txt
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+COPY requirements*.txt ./
+RUN python -m pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -r requirements-dev.txt
 
 # Copy application code
 COPY ./app /app

@@ -26,6 +26,9 @@ services:
     container_name: "api"
     volumes:
       - ./app:/app
+      - ./tests:/app/tests
+      - ./pytest.ini:/app/pytest.ini
+      - ./requirements-dev.txt:/app/requirements-dev.txt
     ports:
       - ${BACKEND_PORT}:8000
     environment:
