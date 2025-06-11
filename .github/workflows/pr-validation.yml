@@ -30,9 +30,9 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --no-cache-dir --upgrade pip
-        pip install --no-cache-dir -r requirements.txt
-        pip install --no-cache-dir -r requirements-dev.txt
+        python -m pip install --no-cache-dir --upgrade pip 2>&1 | grep -v "DEPRECATION\|WARNING\|NOTICE"
+        pip install --no-cache-dir -r requirements.txt 2>&1 | grep -v "DEPRECATION\|WARNING\|NOTICE"
+        pip install --no-cache-dir -r requirements-dev.txt 2>&1 | grep -v "DEPRECATION\|WARNING\|NOTICE"
 
     - name: Run linting
       id: lint
@@ -58,7 +58,7 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-        
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
       
@@ -125,75 +125,3 @@ jobs:
         build_duration=$((end_time - start_time))
         echo "duration=$build_duration" >> $GITHUB_OUTPUT
         echo "duration_formatted=$(date -u -d @${build_duration} +%M:%S)" >> $GITHUB_OUTPUT
-
-    - name: Comment PR
-      uses: actions/github-script@v6
-      if: always()
-      with:
-        script: |
-          const status = '${{ job.status }}'.toLowerCase();
-          const emoji = status === 'success' ? '✅' : status === 'failure' ? '❌' : '⚠️';
-          const testOutput = `${{ steps.pytest.outputs.test_output }}`;
-          const lintOutput = `${{ env.LINT_RESULT }}`;
-          const buildTime = '${{ steps.build_time.outputs.duration_formatted }}';
-          const prNumber = '${{ github.event.pull_request.number }}';
-          
-          const message = [
-            `## Validation Results ${emoji}`,
-            '',
-            '### Linting',
-            '```',
-            lintOutput,
-            '```',
-            '',
-            '### Tests',
-            '```',
-            testOutput,
-            '```',
-            '',
-            '### Docker Build',
-            `- 🕒 Build time: ${buildTime}`,
-            `- 📦 Image: \`wagoneerguy/fsar211-backend:pr-${prNumber}\``,
-            '',
-            status === 'success' 
-              ? '✨ All checks passed! Ready for review.' 
-              : '⚠️ Tests or linting failed. Please fix the issues above before merging.'
-          ].join('\n');
-
-          await github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: message
-          });
-
-    - name: Notify Slack
-      if: always()
-      env:
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-      run: |
-        if [ -n "$SLACK_WEBHOOK" ]; then
-          # Prepare status emoji
-          if [ "${{ job.status }}" == "success" ]; then
-            STATUS_EMOJI=":white_check_mark:"
-          elif [ "${{ job.status }}" == "failure" ]; then
-            STATUS_EMOJI=":x:"
-          else
-            STATUS_EMOJI=":warning:"
-          fi
-
-          # Send notification
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{
-              \"blocks\": [
-                {
-                  \"type\": \"section\",
-                  \"text\": {
-                    \"type\": \"mrkdwn\",
-                    \"text\": \"${STATUS_EMOJI} *PR Validation Results*\n>*PR:* #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}\n>*Status:* ${{ job.status }}\n>*Build Time:* ${{ steps.build_time.outputs.duration_formatted }}\n>*Author:* ${{ github.event.pull_request.user.login }}\n\"
-                  }
-                }
-              ]
-            }" \
-            $SLACK_WEBHOOK
-        fi

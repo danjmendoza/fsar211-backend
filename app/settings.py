@@ -13,12 +13,13 @@ NO_ARG = _NoArg()
 
 
 def get_env_var(key: str, default: str | _NoArg = NO_ARG) -> str:
-    """Get an environment variable, raise an error if it is missing and no default is given."""
+    """Get an environment variable, raise an error if it is missing and no default
+    is given."""
     try:
         return os.environ[key]
-    except KeyError:
+    except KeyError as err:
         if isinstance(default, _NoArg):
-            raise ValueError(f"Environment variable {key} is missing")
+            raise ValueError(f"Environment variable {key} is missing") from err
 
         return default
 
