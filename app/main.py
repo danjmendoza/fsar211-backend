@@ -26,5 +26,6 @@ app.add_middleware(
 async def read_root() -> dict:
     return {
         "Hello": "Welcome to the 211 some chagne in the code",
-        "and": "then some more change"
+        "and": "then some masdfcore change",
+        "or": "then some more change"
     }
