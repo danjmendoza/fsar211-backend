@@ -14,14 +14,17 @@ root_path = Path(__file__).parent.parent
 sys.path.append(str(root_path / "app"))
 sys.path.append(str(root_path / "tests"))
 
-from test_settings import SQLALCHEMY_DATABASE_URL  # noqa: E402
+# Import test settings first to override app settings
+import test_settings  # noqa: E402
+
+sys.modules["settings"] = test_settings  # Override app settings
 
 from app.db import Base  # noqa: E402
 from app.main import app  # noqa: E402
 
 # Create async engine for testing
 test_engine = create_async_engine(
-    SQLALCHEMY_DATABASE_URL,
+    test_settings.SQLALCHEMY_DATABASE_URL,
     poolclass=StaticPool,
     echo=True,
 )
