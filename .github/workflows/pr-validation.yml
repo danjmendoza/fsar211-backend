@@ -94,8 +94,8 @@ jobs:
         # Initialize database schema
         docker exec test-db psql -U test -d test -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
 
-        # Run tests in Docker with error handling
-        echo "Running tests..."
+        # Run migrations and tests in Docker
+        echo "Running migrations and tests..."
         if ! docker run \
           --rm \
           --network test-network \
@@ -113,6 +113,7 @@ jobs:
             . /venv/bin/activate && \
             pip install --no-cache-dir --upgrade pip && \
             pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt && \
+            alembic upgrade head && \
             mkdir -p test-results && \
             pytest -v --junitxml=test-results/junit.xml\
           " 2>&1 | tee test_output.txt; then
