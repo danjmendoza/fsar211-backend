@@ -5,6 +5,7 @@ on:
     types:
       - opened
       - synchronize
+      - closed
     branches:
       - main
     paths:
@@ -15,6 +16,25 @@ permissions:
   pull-requests: write  # Needed to comment on PRs
 
 jobs:
+  # Delete branch after merge
+  cleanup:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete branch
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branch = context.payload.pull_request.head.ref
+            const owner = context.repo.owner
+            const repo = context.repo.repo
+            await github.rest.git.deleteRef({
+              owner,
+              repo,
+              ref: `heads/${branch}`
+            })
+
   validate:
     runs-on: ubuntu-latest
     
@@ -74,8 +94,8 @@ jobs:
         # Initialize database schema
         docker exec test-db psql -U test -d test -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
 
-        # Run tests in Docker with error handling
-        echo "Running tests..."
+        # Run migrations and tests in Docker
+        echo "Running migrations and tests..."
         if ! docker run \
           --rm \
           --network test-network \
@@ -93,6 +113,10 @@ jobs:
             . /venv/bin/activate && \
             pip install --no-cache-dir --upgrade pip && \
             pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt && \
+            cd app && \
+            cp alembic.ini.sample alembic.ini && \
+            alembic upgrade head && \
+            cd .. && \
             mkdir -p test-results && \
             pytest -v --junitxml=test-results/junit.xml\
           " 2>&1 | tee test_output.txt; then
@@ -103,6 +127,14 @@ jobs:
         echo "TEST_RESULT<<EOF" >> $GITHUB_ENV
         cat test_output.txt >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
+
+    - name: Check test results
+      if: always()
+      run: |
+        if grep -q "=== FAILURES ===\|=== ERRORS ===" test_output.txt; then
+          echo "Tests failed. See output above."
+          exit 1
+        fi
 
     - name: Cleanup Docker resources
       if: always()
@@ -126,6 +158,7 @@ jobs:
 
     - name: Build Docker image
       id: build
+      if: success()
       uses: docker/build-push-action@v4
       with:
         context: .

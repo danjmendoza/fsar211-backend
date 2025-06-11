@@ -27,6 +27,7 @@ class User(Base):
 
 class Form211(Base):
     __tablename__ = "form211"
+    __table_args__ = {"extend_existing": True}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(nullable=False)
