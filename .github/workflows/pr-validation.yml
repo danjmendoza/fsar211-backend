@@ -78,7 +78,7 @@ jobs:
         cache-to: type=inline
 
     - name: Run Tests
-      id: test
+      id: pytest
       run: |
         # Start PostgreSQL
         docker run -d \
