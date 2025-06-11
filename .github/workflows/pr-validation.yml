@@ -53,7 +53,6 @@ jobs:
         docker run -d \
           --name test-db \
           --network test-network \
-          -p 5432:5432 \
           -e POSTGRES_USER=test \
           -e POSTGRES_PASSWORD=test \
           -e POSTGRES_DB=test \

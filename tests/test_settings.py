@@ -1,7 +1,7 @@
 """Test settings for the FastAPI application."""
 
 # Database settings
-PG_HOST = "localhost"
+PG_HOST = "test-db"  # Use container name from Docker network
 PG_PORT = "5432"
 PG_USER = "test"
 PG_PASSWORD = "test"
