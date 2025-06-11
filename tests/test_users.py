@@ -6,14 +6,14 @@ from app.user.models import User
 
 
 @pytest.mark.asyncio
-async def test_create_user(client: AsyncClient, setup_db: AsyncSession) -> None:
+async def test_create_user(async_client: AsyncClient, setup_db: AsyncSession) -> None:
     """Test creating a new user."""
     user_data = {
         "name": "Test User",
         "email": "test@example.com",
         "resource_type": "volunteer",
     }
-    response = await client.post("/api/v1/user/", json=user_data)
+    response = await async_client.post("/api/v1/user/", json=user_data)
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == user_data["name"]
@@ -32,7 +32,7 @@ async def test_create_user(client: AsyncClient, setup_db: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_user(client: AsyncClient, setup_db: AsyncSession) -> None:
+async def test_get_user(async_client: AsyncClient, setup_db: AsyncSession) -> None:
     """Test retrieving a user."""
     # Create a test user directly in the database
     user = User(
@@ -43,7 +43,7 @@ async def test_get_user(client: AsyncClient, setup_db: AsyncSession) -> None:
     await setup_db.refresh(user)
 
     # Get the user through API
-    response = await client.get(f"/api/v1/user/{user.id}")
+    response = await async_client.get(f"/api/v1/user/{user.id}")
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == user.name
@@ -52,7 +52,7 @@ async def test_get_user(client: AsyncClient, setup_db: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
-async def test_list_users(client: AsyncClient, setup_db: AsyncSession) -> None:
+async def test_list_users(async_client: AsyncClient, setup_db: AsyncSession) -> None:
     """Test listing all users."""
     # Create test users directly in the database
     users = [
@@ -73,7 +73,7 @@ async def test_list_users(client: AsyncClient, setup_db: AsyncSession) -> None:
     await setup_db.commit()
 
     # List users through API
-    response = await client.get("/api/v1/user/")
+    response = await async_client.get("/api/v1/user/")
     assert response.status_code == 200
     data = response.json()
     assert len(data) >= 2  # There might be other users from previous tests
