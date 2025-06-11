@@ -1,11 +1,9 @@
-name: Build and Push Docker Image
+name: Deploy to Production
 
 on:
   pull_request:
     types:
-      - opened      # Triggered when PR is created
-      - synchronize # Triggered when PR branch is updated
-      - closed      # Triggered when PR is merged or closed
+      - closed  # Only trigger when PR is merged or closed
     branches:
       - main
     paths:
@@ -53,7 +51,7 @@ jobs:
         cache-to: type=inline
 
     - name: Create deployment status
-      # Temporarily deploying on any PR event for testing
+      if: github.event.pull_request.merged == true
       uses: bobheadxi/deployments@v1
       id: deployment
       with:
@@ -64,7 +62,7 @@ jobs:
         desc: 'Deploy to production'
 
     - name: Setup SSH and test connection
-      # Temporarily deploying on any PR event for testing
+      if: github.event.pull_request.merged == true
       env:
         SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_KEY }}
         DEPLOY_HOST: ${{ secrets.PROD_HOST }}
@@ -83,7 +81,7 @@ jobs:
         fi
 
     - name: Deploy to production
-      # Temporarily deploying on any PR event for testing
+      if: github.event.pull_request.merged == true
       env:
         SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_KEY }}
         DEPLOY_HOST: ${{ secrets.PROD_HOST }}
@@ -147,7 +145,7 @@ jobs:
         notify_slack ":white_check_mark: Successfully deployed fsar211-backend!"
 
     - name: Update deployment status
-      if: always() # Temporarily updating status on any PR event
+      if: always() && github.event.pull_request.merged == true # Only update status when merged to main
       uses: bobheadxi/deployments@v1
       with:
         step: finish

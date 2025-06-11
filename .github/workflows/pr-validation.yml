@@ -1,0 +1,151 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    branches:
+      - main
+    paths:
+      - '**'  # Any changes in the backend repository
+
+permissions:
+  contents: read
+  pull-requests: write  # Needed to comment on PRs
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ruff pytest
+        pip install -r requirements.txt
+
+    - name: Run linting
+      id: lint
+      run: |
+        echo "Running Ruff linter..."
+        LINT_OUTPUT=$(ruff check . --format=github || true)
+        echo "LINT_RESULT<<EOF" >> $GITHUB_ENV
+        echo "$LINT_OUTPUT" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+
+    - name: Run tests
+      id: test
+      run: |
+        echo "Running pytest..."
+        mkdir -p test-results
+        TEST_OUTPUT=$(pytest -v --junitxml=test-results/junit.xml || true)
+        echo "TEST_RESULT<<EOF" >> $GITHUB_ENV
+        echo "$TEST_OUTPUT" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+      
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+      
+    - name: Get timestamp
+      id: timestamp
+      run: echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
+
+    - name: Build Docker image
+      id: build
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: false  # Don't push to registry, just build to verify
+        tags: wagoneerguy/fsar211-backend:pr-${{ github.event.pull_request.number }}
+        cache-from: type=registry,ref=wagoneerguy/fsar211-backend:latest
+        cache-to: type=inline
+
+    - name: Calculate build time
+      id: build_time
+      run: |
+        end_time=$(date +%s)
+        start_time=${{ steps.timestamp.outputs.start_time }}
+        build_duration=$((end_time - start_time))
+        echo "duration=$build_duration" >> $GITHUB_OUTPUT
+        echo "duration_formatted=$(date -u -d @${build_duration} +%M:%S)" >> $GITHUB_OUTPUT
+
+    - name: Comment PR
+      uses: actions/github-script@v6
+      if: always()
+      with:
+        script: |
+          const statusEmoji = {success: '✅', failure: '❌', cancelled: '⚠️'};
+          const status = '${{ job.status }}'.toLowerCase();
+          const emoji = statusEmoji[status] || '❓';
+
+          const message = `## Validation Results ${emoji}
+
+          ### Linting
+          \`\`\`
+          ${{ env.LINT_RESULT }}
+          \`\`\`
+
+          ### Tests
+          \`\`\`
+          ${{ env.TEST_RESULT }}
+          \`\`\`
+
+          ### Docker Build
+          - 🕒 Build time: ${{ steps.build_time.outputs.duration_formatted }}
+          - 📦 Image: \`wagoneerguy/fsar211-backend:pr-${{ github.event.pull_request.number }}\`
+
+          ${status === 'success' ? '✨ All checks passed! Ready for review.' : '⚠️ Some checks failed. Please review the results above.'}`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: message
+          })
+
+    - name: Notify Slack
+      if: always()
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+      run: |
+        if [ -n "$SLACK_WEBHOOK" ]; then
+          # Prepare status emoji
+          if [ "${{ job.status }}" == "success" ]; then
+            STATUS_EMOJI=":white_check_mark:"
+          elif [ "${{ job.status }}" == "failure" ]; then
+            STATUS_EMOJI=":x:"
+          else
+            STATUS_EMOJI=":warning:"
+          fi
+
+          # Send notification
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{
+              \"blocks\": [
+                {
+                  \"type\": \"section\",
+                  \"text\": {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"${STATUS_EMOJI} *PR Validation Results*\n>*PR:* #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}\n>*Status:* ${{ job.status }}\n>*Build Time:* ${{ steps.build_time.outputs.duration_formatted }}\n>*Author:* ${{ github.event.pull_request.user.login }}\n\"
+                  }
+                }
+              ]
+            }" \
+            $SLACK_WEBHOOK
+        fi

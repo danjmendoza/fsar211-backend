@@ -25,5 +25,5 @@ app.add_middleware(
 @app.get("/", tags=["root"])
 async def read_root() -> dict:
     return {
-        "Hello": "Welcome to the 211 some chagne in the code"
+        "Hello": "Welcome to the 211 some chagne in the code, this was auto deployed on merge"
     }
