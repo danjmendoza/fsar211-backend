@@ -71,10 +71,38 @@ jobs:
       uses: docker/build-push-action@v4
       with:
         context: .
+        load: true  # Load the image locally for testing
         push: false  # Don't push to registry, just build to verify
         tags: wagoneerguy/fsar211-backend:pr-${{ github.event.pull_request.number }}
         cache-from: type=registry,ref=wagoneerguy/fsar211-backend:latest
         cache-to: type=inline
+
+    - name: Run Tests
+      id: test
+      run: |
+        # Start PostgreSQL
+        docker run -d \
+          --name test-db \
+          -e POSTGRES_USER=test \
+          -e POSTGRES_PASSWORD=test \
+          -e POSTGRES_DB=test \
+          postgres:14-alpine
+
+        # Wait for PostgreSQL to be ready
+        sleep 5
+
+        # Run tests in the container and capture output
+        echo "TEST_OUTPUT<<EOF" >> $GITHUB_ENV
+        docker run \
+          --network host \
+          -e PG_USER=test \
+          -e PG_PASSWORD=test \
+          -e PG_DB=test \
+          -e PG_HOST=localhost \
+          -e PG_PORT=5432 \
+          wagoneerguy/fsar211-backend:pr-${{ github.event.pull_request.number }} \
+          python -m pytest -v >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
 
     - name: Calculate build time
       id: build_time
@@ -103,14 +131,14 @@ jobs:
 
           ### Tests
           \`\`\`
-          ${{ env.TEST_RESULT }}
+          ${{ env.TEST_OUTPUT }}
           \`\`\`
 
           ### Docker Build
           - 🕒 Build time: ${{ steps.build_time.outputs.duration_formatted }}
           - 📦 Image: \`wagoneerguy/fsar211-backend:pr-${{ github.event.pull_request.number }}\`
 
-          ${status === 'success' ? '✨ All checks passed! Ready for review.' : '⚠️ Some checks failed. Please review the results above.'}`;
+          ${status === 'success' ? '✨ All checks passed! Ready for review.' : '⚠️ Tests or linting failed. Please fix the issues above before merging.'}`;
 
           github.rest.issues.createComment({
             issue_number: context.issue.number,
