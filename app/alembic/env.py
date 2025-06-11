@@ -1,20 +1,22 @@
-import asyncio
-from logging.config import fileConfig
+# ruff: noqa
+
 import sys
 from pathlib import Path
 
-# Add the app directory to the Python path
+# Add the app directory to the Python path before imports
 app_path = Path(__file__).parent.parent
 sys.path.append(str(app_path))
 
+import asyncio
+from logging.config import fileConfig
+
+from alembic import context
+from db import Base
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from alembic import context
-from db import Base
 import settings  # Import settings module
-from user.models import User  # Import models explicitly
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -47,7 +49,7 @@ def run_migrations_offline() -> None:
     """
     # Override sqlalchemy.url with the URL from environment variables
     config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URL)
-    
+
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -73,7 +75,7 @@ async def run_async_migrations() -> None:
     """
     # Override sqlalchemy.url with the URL from environment variables
     config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URL)
-    
+
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

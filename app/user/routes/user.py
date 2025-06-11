@@ -1,34 +1,39 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from db import get_async_db_session
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from user import models
 from user.routes import schemas
 
 # /api/v1/user
 router = APIRouter()
 
+
 @router.post("", summary="Create a new user")
 async def post_create_user(
     db: Annotated[AsyncSession, Depends(get_async_db_session)],
     request_data: schemas.CreateUserRequest,
 ) -> schemas.CreateUserResponse:
-    user = models.User(name=request_data.name, email=request_data.email, resource_type=request_data.resource_type)
+    user = models.User(
+        name=request_data.name,
+        email=request_data.email,
+        resource_type=request_data.resource_type,
+    )
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    
+
     return schemas.CreateUserResponse(
         id=user.id,
         name=user.name,
         email=user.email,
         resource_type=user.resource_type,
         created_at=user.created_at,
-        updated_at=user.updated_at
+        updated_at=user.updated_at,
     )
+
 
 @router.get("/{user_id}", summary="Rrtrieve a user")
 async def get_user(
@@ -41,25 +46,23 @@ async def get_user(
         models.User.email,
         models.User.resource_type,
         models.User.created_at,
-        models.User.updated_at
-    ).where(
-        models.User.id == user_id,
-        models.User.deleted_at.is_(None)
-    )
+        models.User.updated_at,
+    ).where(models.User.id == user_id, models.User.deleted_at.is_(None))
     result_row = (await db.execute(stmt)).first()
 
     if result_row is None:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     mapped_row = result_row._mapping
     return schemas.RetrieveUserResponse(
         id=mapped_row[models.User.id],
-        name=mapped_row[model.User.name],
-        email=mapped_row[model.User.email],
-        resource_type=mapped_row[model.User.resource_type],
-        created_at=mapped_row[model.User.created_at],
-        updated_at=mapped_row[model.User.updated_at],
+        name=mapped_row[models.User.name],
+        email=mapped_row[models.User.email],
+        resource_type=mapped_row[models.User.resource_type],
+        created_at=mapped_row[models.User.created_at],
+        updated_at=mapped_row[models.User.updated_at],
     )
+
 
 @router.get("", summary="List all users")
 async def get_users(
@@ -77,10 +80,10 @@ async def get_users(
             models.User.email,
             models.User.resource_type,
             models.User.created_at,
-            models.User.updated_at
-        ).where(
-            models.User.deleted_at.is_(None)
-        ).order_by(models.User.created_at.desc())
+            models.User.updated_at,
+        )
+        .where(models.User.deleted_at.is_(None))
+        .order_by(models.User.created_at.desc())
     )
 
     result_rows = (await db.execute(stmt)).all()
@@ -94,10 +97,10 @@ async def get_users(
                 email=row.email,
                 resource_type=row.resource_type,
                 created_at=row.created_at,
-                updated_at=row.updated_at
+                updated_at=row.updated_at,
             )
             for row in result_rows
-        ]
+        ],
     )
 
 
@@ -105,17 +108,16 @@ async def get_users(
 async def put_user(
     db: Annotated[AsyncSession, Depends(get_async_db_session)],
     user_id: int,
-    request_data: schemas.UpdateUserRequest
+    request_data: schemas.UpdateUserRequest,
 ) -> schemas.UpdateUserResponse:
     stmt = select(models.User).where(
-        models.User.id == user_id,
-        models.User.deleted_at.is_(None)
+        models.User.id == user_id, models.User.deleted_at.is_(None)
     )
 
     user = (await db.execute(stmt)).scalar()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     user.name = request_data.name
     user.resource_type = request_data.resource_type
 
@@ -128,7 +130,7 @@ async def put_user(
         email=user.email,
         resource_type=user.resource_type,
         created_at=user.created_at,
-        updated_at=user.updated_at
+        updated_at=user.updated_at,
     )
 
 
@@ -141,7 +143,7 @@ async def delete_user(
         models.User.id == user_id,
         models.User.deleted_at.is_(None),
     )
-     
+
     user = (await db.execute(stmt)).scalar()
 
     if user is None:
