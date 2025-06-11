@@ -43,12 +43,16 @@ jobs:
         echo "$LINT_OUTPUT" >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
 
+    - name: Create test network
+      run: docker network create test-network
+
     - name: Run tests
       id: test
       run: |
         # Start PostgreSQL
         docker run -d \
           --name test-db \
+          --network test-network \
           -e POSTGRES_USER=test \
           -e POSTGRES_PASSWORD=test \
           -e POSTGRES_DB=test \
@@ -65,13 +69,29 @@ jobs:
           sleep 1
         done
 
-        # Run tests
-        echo "Running pytest..."
-        mkdir -p test-results
-        TEST_OUTPUT=$(PYTHONPATH=/app:/tests pytest -v --junitxml=test-results/junit.xml 2>&1)
+        # Run tests in Docker
+        docker run \
+          --rm \
+          --network test-network \
+          -v ${PWD}/app:/app \
+          -v ${PWD}/tests:/tests \
+          -v ${PWD}/pytest.ini:/pytest.ini \
+          -e PG_HOST=test-db \
+          -e PG_PORT=5432 \
+          -e PG_USER=test \
+          -e PG_PASSWORD=test \
+          -e PG_DB=test \
+          -e PYTHONPATH=/app:/tests \
+          python:3.11-slim \
+          /bin/bash -c "pip install -r /app/requirements.txt -r /app/requirements-dev.txt && pytest -v --junitxml=/tests/test-results/junit.xml" 2>&1 > test_output.txt
+
         echo "TEST_RESULT<<EOF" >> $GITHUB_ENV
-        echo "$TEST_OUTPUT" >> $GITHUB_ENV
+        cat test_output.txt >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
+
+    - name: Cleanup test network
+      if: always()
+      run: docker network rm test-network
       
     - name: Login to Docker Hub
       uses: docker/login-action@v2
