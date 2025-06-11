@@ -133,34 +133,41 @@ jobs:
       if: always()
       with:
         script: |
-          const statusEmoji = {success: '✅', failure: '❌', cancelled: '⚠️'};
           const status = '${{ job.status }}'.toLowerCase();
-          const emoji = statusEmoji[status] || '❓';
+          const emoji = status === 'success' ? '✅' : status === 'failure' ? '❌' : '⚠️';
+          const testOutput = `${{ steps.pytest.outputs.test_output }}`;
+          const lintOutput = `${{ env.LINT_RESULT }}`;
+          const buildTime = '${{ steps.build_time.outputs.duration_formatted }}';
+          const prNumber = '${{ github.event.pull_request.number }}';
+          
+          const message = [
+            `## Validation Results ${emoji}`,
+            '',
+            '### Linting',
+            '```',
+            lintOutput,
+            '```',
+            '',
+            '### Tests',
+            '```',
+            testOutput,
+            '```',
+            '',
+            '### Docker Build',
+            `- 🕒 Build time: ${buildTime}`,
+            `- 📦 Image: \`wagoneerguy/fsar211-backend:pr-${prNumber}\``,
+            '',
+            status === 'success' 
+              ? '✨ All checks passed! Ready for review.' 
+              : '⚠️ Tests or linting failed. Please fix the issues above before merging.'
+          ].join('\n');
 
-          const message = `## Validation Results ${emoji}
-
-          ### Linting
-          \`\`\`
-          ${{ env.LINT_RESULT }}
-          \`\`\`
-
-          ### Tests
-          \`\`\`
-          ${{ steps.pytest.outputs.test_output }}
-          \`\`\`
-
-          ### Docker Build
-          - 🕒 Build time: ${{ steps.build_time.outputs.duration_formatted }}
-          - 📦 Image: \`wagoneerguy/fsar211-backend:pr-${{ github.event.pull_request.number }}\`
-
-          ${status === 'success' ? '✨ All checks passed! Ready for review.' : '⚠️ Tests or linting failed. Please fix the issues above before merging.'}`;
-
-          github.rest.issues.createComment({
+          await github.rest.issues.createComment({
             issue_number: context.issue.number,
             owner: context.repo.owner,
             repo: context.repo.repo,
             body: message
-          })
+          });
 
     - name: Notify Slack
       if: always()
