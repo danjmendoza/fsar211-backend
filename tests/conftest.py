@@ -49,16 +49,17 @@ def event_loop():
 
 @pytest.fixture(autouse=True)
 async def setup_db() -> AsyncGenerator[AsyncSession, None]:
-    # Drop and recreate all tables
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-        # Create extension after tables
-        await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'))
-
-    # Create a new session for testing
     async with async_session() as session:
+        # Drop and recreate all tables
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+            # Create extension after tables
+            await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'))
+
+        # Return session for testing
         yield session
+
         # Rollback any pending changes
         await session.rollback()
         await session.close()
