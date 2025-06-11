@@ -46,7 +46,16 @@ jobs:
         cache-from: type=registry,ref=wagoneerguy/fsar211-backend:latest
         cache-to: type=inline
 
-    - name: Deploy to production
+    - name: Create deployment status
+      if: github.event.pull_request.merged == true
+      uses: bobheadxi/deployments@v1
+      id: deployment
+      with:
+        step: start
+        token: ${{ secrets.GITHUB_TOKEN }}
+        env: production
+
+    - name: Setup SSH and test connection
       if: github.event.pull_request.merged == true
       env:
         SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_KEY }}
@@ -57,24 +66,84 @@ jobs:
         mkdir -p ~/.ssh
         echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
         chmod 600 ~/.ssh/deploy_key
-        echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+        echo "$DEPLOY_HOST ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL/wfulejt1Rju8XK61dNS0D/OF/EYBPAibHA25O6/cp" > ~/.ssh/known_hosts
 
-        # Deploy commands
-        ssh -i ~/.ssh/deploy_key $DEPLOY_USER@$DEPLOY_HOST << 'ENDSSH'
-          # Pull new image
-          docker pull wagoneerguy/fsar211-backend:latest
+        # Test SSH connection
+        if ! ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new $DEPLOY_USER@$DEPLOY_HOST 'echo "SSH Connection Successful"'; then
+          echo "::error::Failed to establish SSH connection"
+          exit 1
+        fi
 
-          # Stop and remove existing container
+    - name: Deploy to production
+      if: github.event.pull_request.merged == true
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_KEY }}
+        DEPLOY_HOST: ${{ secrets.PROD_HOST }}
+        DEPLOY_USER: ${{ secrets.PROD_SSH_USER }}
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+      run: |
+        # Function to send Slack notification
+        notify_slack() {
+          if [ -n "$SLACK_WEBHOOK" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{\"text\":\"$1\"}" \
+              $SLACK_WEBHOOK
+          fi
+        }
+
+        # Function to handle errors
+        handle_error() {
+          error_message="$1"
+          echo "::error::$error_message"
+          notify_slack ":x: Deployment failed: $error_message"
+          exit 1
+        }
+
+        notify_slack ":rocket: Starting deployment of fsar211-backend..."
+
+        # Deploy with error handling
+        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new $DEPLOY_USER@$DEPLOY_HOST << 'ENDSSH' || handle_error "Deployment failed"
+          set -e  # Exit on any error
+
+          echo "Pulling new image..."
+          docker pull wagoneerguy/fsar211-backend:latest || exit 1
+
+          echo "Stopping old container..."
           docker stop fsar211-backend 2>/dev/null || true
           docker rm fsar211-backend 2>/dev/null || true
 
-          # Run new container
+          echo "Starting new container..."
           docker run -d --name fsar211-backend \
             --network fsar211-network \
             -p 8000:8000 \
             --env-file /tmp/backend.env \
-            wagoneerguy/fsar211-backend:latest
+            wagoneerguy/fsar211-backend:latest || exit 1
 
-          # Run migrations
-          docker exec fsar211-backend alembic upgrade head
+          echo "Running migrations..."
+          if ! docker exec fsar211-backend alembic upgrade head; then
+            echo "Migration failed, rolling back..."
+            docker stop fsar211-backend
+            docker rm fsar211-backend
+            exit 1
+          fi
+
+          # Verify service is running
+          echo "Verifying service..."
+          sleep 5
+          if ! curl -s http://localhost:8000 > /dev/null; then
+            echo "Service verification failed"
+            exit 1
+          fi
         ENDSSH
+
+        notify_slack ":white_check_mark: Successfully deployed fsar211-backend!"
+
+    - name: Update deployment status
+      if: always() && github.event.pull_request.merged == true
+      uses: bobheadxi/deployments@v1
+      with:
+        step: finish
+        token: ${{ secrets.GITHUB_TOKEN }}
+        status: ${{ job.status }}
+        deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+        env_url: https://211.fremontsar.com
