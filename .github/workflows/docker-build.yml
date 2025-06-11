@@ -45,3 +45,36 @@ jobs:
           wagoneerguy/fsar211-backend:pr-${{ env.PR_NUMBER }}-${{ github.sha }}
         cache-from: type=registry,ref=wagoneerguy/fsar211-backend:latest
         cache-to: type=inline
+
+    - name: Deploy to production
+      if: github.event.pull_request.merged == true
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_KEY }}
+        DEPLOY_HOST: ${{ secrets.PROD_HOST }}
+        DEPLOY_USER: ${{ secrets.PROD_SSH_USER }}
+      run: |
+        # Setup SSH key
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+
+        # Deploy commands
+        ssh -i ~/.ssh/deploy_key $DEPLOY_USER@$DEPLOY_HOST << 'ENDSSH'
+          # Pull new image
+          docker pull wagoneerguy/fsar211-backend:latest
+
+          # Stop and remove existing container
+          docker stop fsar211-backend 2>/dev/null || true
+          docker rm fsar211-backend 2>/dev/null || true
+
+          # Run new container
+          docker run -d --name fsar211-backend \
+            --network fsar211-network \
+            -p 8000:8000 \
+            --env-file /tmp/backend.env \
+            wagoneerguy/fsar211-backend:latest
+
+          # Run migrations
+          docker exec fsar211-backend alembic upgrade head
+        ENDSSH
