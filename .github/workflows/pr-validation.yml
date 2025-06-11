@@ -113,8 +113,10 @@ jobs:
             . /venv/bin/activate && \
             pip install --no-cache-dir --upgrade pip && \
             pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt && \
-            cp app/alembic.ini.sample alembic.ini && \
+            cd app && \
+            cp alembic.ini.sample alembic.ini && \
             alembic upgrade head && \
+            cd .. && \
             mkdir -p test-results && \
             pytest -v --junitxml=test-results/junit.xml\
           " 2>&1 | tee test_output.txt; then
