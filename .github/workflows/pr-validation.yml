@@ -82,7 +82,13 @@ jobs:
           -e PG_DB=test \
           -e PYTHONPATH=/workspace/app:/workspace/tests \
           python:3.11-slim \
-          /bin/bash -c "pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt && mkdir -p test-results && pytest -v --junitxml=test-results/junit.xml" 2>&1 > test_output.txt
+          /bin/bash -c "\
+            apt-get update && \
+            apt-get install -y gcc python3-dev libpq-dev && \
+            pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt && \
+            mkdir -p test-results && \
+            pytest -v --junitxml=test-results/junit.xml\
+          " 2>&1 > test_output.txt
 
         echo "TEST_RESULT<<EOF" >> $GITHUB_ENV
         cat test_output.txt >> $GITHUB_ENV
