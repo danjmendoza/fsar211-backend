@@ -93,27 +93,15 @@ jobs:
         # Wait for PostgreSQL to be ready
         sleep 5
 
-        # Create a temporary file for test output
-        touch test_output.txt
+        # Set up Python environment
+        python -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
 
-        # Run tests in the container
-        docker run \
-          --network host \
-          -e PG_USER=test \
-          -e PG_PASSWORD=test \
-          -e PG_DB=test \
-          -e PG_HOST=localhost \
-          -e PG_PORT=5432 \
-          -v ${PWD}/app:/app \
-          -v ${PWD}/tests:/tests \
-          -v ${PWD}/pytest.ini:/pytest.ini \
-          -v ${PWD}/requirements-dev.txt:/requirements-dev.txt \
-          -w /app \
-          wagoneerguy/fsar211-backend:pr-${{ github.event.pull_request.number }} \
-          /bin/bash -c "pip install -r requirements-dev.txt && PYTHONPATH=/app:/tests python -m pytest -v" > test_output.txt
-
-        # Save test output to environment
+        # Run tests
         echo 'TEST_OUTPUT<<EOF' >> $GITHUB_ENV
+        PYTHONPATH=$PWD PG_USER=test PG_PASSWORD=test PG_DB=test PG_HOST=localhost PG_PORT=5432 pytest -v >> test_output.txt 2>&1
         cat test_output.txt >> $GITHUB_ENV
         echo 'EOF' >> $GITHUB_ENV
 
