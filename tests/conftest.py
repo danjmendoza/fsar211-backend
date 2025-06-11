@@ -30,7 +30,7 @@ test_engine = create_async_engine(
 )
 
 # Create async session factory
-test_async_session = sessionmaker(
+async_session = sessionmaker(
     test_engine,
     class_=AsyncSession,
     expire_on_commit=False,
@@ -46,13 +46,18 @@ def event_loop():
 
 
 @pytest.fixture(autouse=True)
-async def setup_db() -> AsyncGenerator:
-    """Create all tables before each test and drop them after."""
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
+async def setup_db() -> AsyncGenerator[AsyncSession, None]:
+    # Drop and recreate all tables
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
+    # Create a new session for testing
+    async with async_session() as session:
+        yield session
+        # Rollback any pending changes
+        await session.rollback()
+        await session.close()
 
 
 @pytest.fixture
