@@ -103,9 +103,10 @@ jobs:
           -e PG_HOST=localhost \
           -e PG_PORT=5432 \
           -v ${PWD}/app:/app \
-          -v ${PWD}/tests:/app/tests \
-          -v ${PWD}/pytest.ini:/app/pytest.ini \
-          -v ${PWD}/requirements-dev.txt:/app/requirements-dev.txt \
+          -v ${PWD}/tests:/tests \
+          -v ${PWD}/pytest.ini:/pytest.ini \
+          -v ${PWD}/requirements-dev.txt:/requirements-dev.txt \
+          -w /app \
           wagoneerguy/fsar211-backend:pr-${{ github.event.pull_request.number }} \
           /bin/bash -c "pip install -r requirements-dev.txt && python -m pytest -v" >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV

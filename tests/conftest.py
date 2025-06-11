@@ -9,9 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-# Add app directory to Python path
-app_path = Path(__file__).parent.parent / "app"
-sys.path.append(str(app_path))
+# Add app and tests directories to Python path
+root_path = Path(__file__).parent.parent
+sys.path.append(str(root_path / "app"))
+sys.path.append(str(root_path / "tests"))
 
 from test_settings import SQLALCHEMY_DATABASE_URL  # noqa: E402
 
