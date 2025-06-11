@@ -69,3 +69,6 @@ docker run -d --name fsar211-backend \
 
 # Run database migrations
 docker exec -it fsar211-backend bash -c "cd /app && alembic upgrade head"
+
+# API Docs
+http://localhost:8000/redoc
