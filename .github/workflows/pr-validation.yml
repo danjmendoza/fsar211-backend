@@ -5,6 +5,7 @@ on:
     types:
       - opened
       - synchronize
+      - closed
     branches:
       - main
     paths:
@@ -15,6 +16,25 @@ permissions:
   pull-requests: write  # Needed to comment on PRs
 
 jobs:
+  # Delete branch after merge
+  cleanup:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete branch
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const branch = context.payload.pull_request.head.ref
+            const owner = context.repo.owner
+            const repo = context.repo.repo
+            await github.rest.git.deleteRef({
+              owner,
+              repo,
+              ref: `heads/${branch}`
+            })
+
   validate:
     runs-on: ubuntu-latest
     
