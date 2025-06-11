@@ -93,8 +93,10 @@ jobs:
         # Wait for PostgreSQL to be ready
         sleep 5
 
-        # Run tests in the container and capture output
-        echo "TEST_OUTPUT<<EOF" >> $GITHUB_ENV
+        # Create a temporary file for test output
+        touch test_output.txt
+
+        # Run tests in the container
         docker run \
           --network host \
           -e PG_USER=test \
@@ -108,8 +110,12 @@ jobs:
           -v ${PWD}/requirements-dev.txt:/requirements-dev.txt \
           -w /app \
           wagoneerguy/fsar211-backend:pr-${{ github.event.pull_request.number }} \
-          /bin/bash -c "pip install -r requirements-dev.txt && python -m pytest -v" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
+          /bin/bash -c "pip install -r requirements-dev.txt && PYTHONPATH=/app:/tests python -m pytest -v" > test_output.txt
+
+        # Save test output to environment
+        echo 'TEST_OUTPUT<<EOF' >> $GITHUB_ENV
+        cat test_output.txt >> $GITHUB_ENV
+        echo 'EOF' >> $GITHUB_ENV
 
     - name: Calculate build time
       id: build_time
