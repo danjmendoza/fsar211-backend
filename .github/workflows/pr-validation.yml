@@ -88,6 +88,8 @@ jobs:
         PG_DB: test
         PG_HOST: localhost
         PG_PORT: 5432
+        SQLALCHEMY_DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
+        SQLALCHEMY_ECHO: "false"
       run: |
         # Start PostgreSQL
         docker run -d \
@@ -107,6 +109,13 @@ jobs:
         pip install -r requirements-dev.txt
 
         # Run tests and capture output
+        export PG_USER=test
+        export PG_PASSWORD=test
+        export PG_DB=test
+        export PG_HOST=localhost
+        export PG_PORT=5432
+        export SQLALCHEMY_DATABASE_URL=postgresql+asyncpg://test:test@localhost:5432/test
+        export SQLALCHEMY_ECHO=false
         pytest_output=$(pytest -v 2>&1)
         echo "test_output=$pytest_output" >> $GITHUB_OUTPUT
 
