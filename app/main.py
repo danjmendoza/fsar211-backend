@@ -12,6 +12,7 @@ app.include_router(v1_router)
 
 origins = ["*"]
 
+# Cors things.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
