@@ -69,8 +69,9 @@ jobs:
           sleep 1
         done
 
-        # Run tests in Docker
-        docker run \
+        # Run tests in Docker with error handling
+        echo "Running tests..."
+        if ! docker run \
           --rm \
           --network test-network \
           -v ${PWD}:/workspace \
@@ -81,18 +82,18 @@ jobs:
           -e PG_PASSWORD=test \
           -e PG_DB=test \
           -e PYTHONPATH=/workspace/app:/workspace/tests \
-          python:3.11-slim \
+          python:3.11 \
           /bin/bash -c "\
-            export DEBIAN_FRONTEND=noninteractive && \
-            apt-get update && \
-            apt-get install -y apt-utils gcc python3-dev libpq-dev python3-venv && \
             python -m venv /venv && \
             . /venv/bin/activate && \
             pip install --no-cache-dir --upgrade pip && \
             pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt && \
             mkdir -p test-results && \
             pytest -v --junitxml=test-results/junit.xml\
-          " 2>&1 > test_output.txt
+          " 2>&1 | tee test_output.txt; then
+          echo "Tests failed. See output above."
+          exit 1
+        fi
 
         echo "TEST_RESULT<<EOF" >> $GITHUB_ENV
         cat test_output.txt >> $GITHUB_ENV
