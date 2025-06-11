@@ -60,6 +60,8 @@ jobs:
         step: start
         token: ${{ secrets.GITHUB_TOKEN }}
         env: production
+        ref: ${{ github.head_ref }}
+        desc: 'Deploy to production'
 
     - name: Setup SSH and test connection
       # Temporarily deploying on any PR event for testing
@@ -152,4 +154,7 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         status: ${{ job.status }}
         deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+        env: production
         env_url: https://211.fremontsar.com
+        ref: ${{ github.head_ref }}
+        desc: 'Production deployment complete'
