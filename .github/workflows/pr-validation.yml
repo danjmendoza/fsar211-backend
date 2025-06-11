@@ -46,9 +46,29 @@ jobs:
     - name: Run tests
       id: test
       run: |
+        # Start PostgreSQL
+        docker run -d \
+          --name test-db \
+          -e POSTGRES_USER=test \
+          -e POSTGRES_PASSWORD=test \
+          -e POSTGRES_DB=test \
+          postgres:14-alpine
+
+        # Wait for PostgreSQL to be ready
+        echo "Waiting for PostgreSQL to be ready..."
+        for i in {1..30}; do
+          if docker exec test-db pg_isready -U test > /dev/null 2>&1; then
+            echo "PostgreSQL is ready!"
+            break
+          fi
+          echo "Waiting..."
+          sleep 1
+        done
+
+        # Run tests
         echo "Running pytest..."
         mkdir -p test-results
-        TEST_OUTPUT=$(pytest -v --junitxml=test-results/junit.xml || true)
+        TEST_OUTPUT=$(PYTHONPATH=/app:/tests pytest -v --junitxml=test-results/junit.xml 2>&1)
         echo "TEST_RESULT<<EOF" >> $GITHUB_ENV
         echo "$TEST_OUTPUT" >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
