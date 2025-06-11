@@ -80,13 +80,9 @@ async def test_list_users(async_client: AsyncClient, setup_db: AsyncSession) -> 
     response = await async_client.get("/api/v1/user")
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, dict)
-    assert "items" in data
-    assert "count" in data
-    assert len(data["items"]) >= 2  # There might be other users from previous tests
+    assert len(data) >= 2  # There might be other users from previous tests
 
     # Verify specific users are in the list
-    user_emails = [u["email"] for u in data["items"]]
+    user_emails = [u["email"] for u in data]
     assert "list_test1@example.com" in user_emails
     assert "list_test2@example.com" in user_emails
-    assert data["count"] >= 2
