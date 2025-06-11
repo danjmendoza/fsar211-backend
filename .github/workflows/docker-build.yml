@@ -1,13 +1,17 @@
-name: Build and Push Docker Image
+name: Deploy to Production
 
 on:
   pull_request:
     types:
-      - closed
+      - closed  # Only trigger when PR is merged or closed
     branches:
       - main
     paths:
       - '**'  # Any changes in the backend repository
+
+permissions:
+  deployments: write
+  contents: read
 
 jobs:
   build-and-push:
@@ -54,6 +58,8 @@ jobs:
         step: start
         token: ${{ secrets.GITHUB_TOKEN }}
         env: production
+        ref: ${{ github.head_ref }}
+        desc: 'Deploy to production'
 
     - name: Setup SSH and test connection
       if: github.event.pull_request.merged == true
@@ -139,11 +145,14 @@ jobs:
         notify_slack ":white_check_mark: Successfully deployed fsar211-backend!"
 
     - name: Update deployment status
-      if: always() && github.event.pull_request.merged == true
+      if: always() && github.event.pull_request.merged == true # Only update status when merged to main
       uses: bobheadxi/deployments@v1
       with:
         step: finish
         token: ${{ secrets.GITHUB_TOKEN }}
         status: ${{ job.status }}
         deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+        env: production
         env_url: https://211.fremontsar.com
+        ref: ${{ github.head_ref }}
+        desc: 'Production deployment complete'
