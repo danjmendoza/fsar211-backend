@@ -2,9 +2,9 @@ FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11
 
 # Install dependencies
 COPY requirements*.txt ./
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt && \
-    pip install -r requirements-dev.txt
+RUN python -m pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -r requirements-dev.txt
 
 # Copy application code
 COPY ./app /app
