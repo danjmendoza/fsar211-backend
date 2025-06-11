@@ -1,4 +1,6 @@
 import asyncio
+import sys
+from pathlib import Path
 from typing import AsyncGenerator
 
 import pytest
@@ -7,9 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.db import Base
-from app.main import app
-from app.settings import SQLALCHEMY_DATABASE_URL
+# Add app directory to Python path
+app_path = Path(__file__).parent.parent / "app"
+sys.path.append(str(app_path))
+
+from test_settings import SQLALCHEMY_DATABASE_URL  # noqa: E402
+
+from app.db import Base  # noqa: E402
+from app.main import app  # noqa: E402
 
 # Create async engine for testing
 test_engine = create_async_engine(

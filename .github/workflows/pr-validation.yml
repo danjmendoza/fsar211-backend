@@ -102,6 +102,7 @@ jobs:
           -e PG_DB=test \
           -e PG_HOST=localhost \
           -e PG_PORT=5432 \
+          -v ${PWD}/app:/app \
           -v ${PWD}/tests:/app/tests \
           -v ${PWD}/pytest.ini:/app/pytest.ini \
           -v ${PWD}/requirements-dev.txt:/app/requirements-dev.txt \
