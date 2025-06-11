@@ -1,4 +1,5 @@
-FROM --platform=linux/amd64 tiangolo/uvicorn-gunicorn-fastapi:python3.11
+ARG TARGETPLATFORM
+FROM --platform=$TARGETPLATFORM tiangolo/uvicorn-gunicorn-fastapi:python3.11
 
 # Install dependencies
 COPY requirements.txt requirements.txt
@@ -8,8 +9,8 @@ RUN pip install -r requirements.txt
 # Copy application code
 COPY ./app /app
 
-# Set up alembic.ini
-COPY ./app/alembic.ini /app/alembic.ini
+# Set up alembic.ini from sample
+COPY ./app/alembic.ini.sample /app/alembic.ini
 
 # Set working directory
 WORKDIR /app
