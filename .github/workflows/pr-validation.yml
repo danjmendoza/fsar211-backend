@@ -124,6 +124,14 @@ jobs:
         cat test_output.txt >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
 
+    - name: Check test results
+      if: always()
+      run: |
+        if grep -q "=== FAILURES ===\|=== ERRORS ===" test_output.txt; then
+          echo "Tests failed. See output above."
+          exit 1
+        fi
+
     - name: Cleanup Docker resources
       if: always()
       run: |
@@ -146,6 +154,7 @@ jobs:
 
     - name: Build Docker image
       id: build
+      if: success()
       uses: docker/build-push-action@v4
       with:
         context: .

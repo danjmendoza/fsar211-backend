@@ -1,0 +1,30 @@
+name: Branch Protection
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR validation status
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo
+            const pr = context.payload.pull_request
+            const { data: checks } = await github.rest.checks.listForRef({
+              owner,
+              repo,
+              ref: pr.head.sha
+            })
+            
+            const validation = checks.check_runs.find(check => 
+              check.name === 'validate'
+            )
+            
+            if (!validation || validation.conclusion !== 'success') {
+              core.setFailed('PR validation must pass before merging')
+            }
