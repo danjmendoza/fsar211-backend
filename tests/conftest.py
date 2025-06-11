@@ -5,6 +5,7 @@ from typing import AsyncGenerator
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -19,6 +20,7 @@ import test_settings  # noqa: E402
 
 sys.modules["settings"] = test_settings  # Override app settings
 
+# Import models first to register them with Base.metadata
 from app.db import Base  # noqa: E402
 from app.main import app  # noqa: E402
 
@@ -51,6 +53,8 @@ async def setup_db() -> AsyncGenerator[AsyncSession, None]:
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+        # Create extension after tables
+        await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'))
 
     # Create a new session for testing
     async with async_session() as session:
