@@ -1,4 +1,5 @@
 # Addd a mgiration
+alembic revision --rev-id 004 --autogenerate -m "Add new 211 fields."
 alembic revision --autogenerate -m "Add Form211 table"
 alembic upgrade head
 
