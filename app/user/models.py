@@ -11,6 +11,7 @@ class User(Base):
     __table_args__ = {"extend_existing": True}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    sar_id: Mapped[int] = mapped_column(default=0, nullable=True)
     name: Mapped[str] = mapped_column(nullable=False)
     email: Mapped[str] = mapped_column(nullable=False, unique=True)
     resource_type: Mapped[str] = mapped_column(nullable=False)

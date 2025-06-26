@@ -4,12 +4,14 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from form211.routes.form211 import router as form211_router
+from timelog.routes.timelog import router as timelog_router
 from user.routes.user import router as user_router
 
 app = FastAPI()
 v1_router = APIRouter(prefix="/api/v1")
 v1_router.include_router(user_router, prefix="/user")
 v1_router.include_router(form211_router, prefix="/211")
+v1_router.include_router(timelog_router, prefix="/timelog")
 app.include_router(v1_router)
 
 origins = ["*"]

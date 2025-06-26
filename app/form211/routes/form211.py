@@ -6,6 +6,8 @@ from form211 import models
 from form211.routes import schemas
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from timelog import models as timelog_models
+from user import models as user_models
 
 # /api/v1/user
 router = APIRouter()
@@ -158,3 +160,57 @@ async def delete_form211(
     await db.commit()
     await db.refresh(form211)
     return None
+
+
+@router.post("/{form211_id}/sign_in", summary="Sign in to a Form 211")
+async def post_sign_in_form211(
+    db: Annotated[AsyncSession, Depends(get_async_db_session)],
+    form211_id: int,
+    request_data: schemas.SignInForm211Request,
+) -> schemas.SignInForm211Response:
+    # Check that we are loading an active
+    stmt = select(models.Form211).where(
+        models.Form211.id == form211_id,
+        models.Form211.deleted_at.is_(None),
+    )
+
+    form211 = (await db.execute(stmt)).scalar()
+
+    if form211 is None:
+        raise HTTPException(status_code=404, detail="Form 211 not found")
+
+    # See if we can find a user based on the FSAR ID
+    sar_id = request_data.sar_id
+    if sar_id is not None:
+        stmt = select(user_models.User).where(
+            user_models.User.sar_id == sar_id,
+            user_models.User.deleted_at.is_(None),
+        )
+        user = (await db.execute(stmt)).scalar()
+
+        if user is None:
+            sar_id = 0
+
+    timelog = timelog_models.Timelog(
+        form211_id=form211.id,
+        name=request_data.name,  # Name is required in the schema
+        sar_id=sar_id or 0,
+        resource_type="FSAR",
+        created_by=request_data.created_by,
+        departure_at=None,  # Start with empty departure time
+    )
+
+    db.add(timelog)
+    await db.commit()
+    await db.refresh(timelog)
+
+    return schemas.SignInForm211Response(
+        id=timelog.id,
+        form211_id=timelog.form211_id,
+        created_by=timelog.created_by,
+        sar_id=timelog.sar_id,
+        name=timelog.name,
+        resource_type=timelog.resource_type,
+        arrival_at=timelog.arrival_at,
+        departure_at=timelog.departure_at,
+    )

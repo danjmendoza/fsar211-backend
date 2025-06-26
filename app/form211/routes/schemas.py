@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -55,3 +56,35 @@ class UpdateForm211Response(BaseModel):
     created_at: datetime
     updated_at: datetime
     closed_at: datetime
+
+
+class SignInForm211Request(BaseModel):
+    sar_id: int
+    name: str
+    created_by: int
+
+
+class SignInForm211Response(BaseModel):
+    id: int
+    form211_id: int
+    created_by: int
+    sar_id: int
+    name: str
+    resource_type: str
+    arrival_at: datetime
+    departure_at: Optional[datetime] = None
+
+
+class SignOutForm211Request(BaseModel):
+    sar_id: int
+
+
+class SignOutForm211Response(BaseModel):
+    id: int
+    form211_id: int
+    created_by: int
+    sar_id: int
+    name: str
+    resource_type: str
+    arrival_at: datetime
+    departure_at: Optional[datetime] = None
