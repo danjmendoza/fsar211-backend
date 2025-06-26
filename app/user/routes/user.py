@@ -20,6 +20,7 @@ async def post_create_user(
         name=request_data.name,
         email=request_data.email,
         resource_type=request_data.resource_type,
+        sar_id=request_data.sar_id,
     )
     db.add(user)
     await db.commit()
@@ -28,6 +29,7 @@ async def post_create_user(
     return schemas.CreateUserResponse(
         id=user.id,
         name=user.name,
+        sar_id=user.sar_id,
         email=user.email,
         resource_type=user.resource_type,
         created_at=user.created_at,
@@ -43,6 +45,7 @@ async def get_user(
     stmt = select(
         models.User.id,
         models.User.name,
+        models.User.sar_id,
         models.User.email,
         models.User.resource_type,
         models.User.created_at,
@@ -57,6 +60,7 @@ async def get_user(
     return schemas.RetrieveUserResponse(
         id=mapped_row[models.User.id],
         name=mapped_row[models.User.name],
+        sar_id=mapped_row[models.User.sar_id],
         email=mapped_row[models.User.email],
         resource_type=mapped_row[models.User.resource_type],
         created_at=mapped_row[models.User.created_at],
@@ -77,6 +81,7 @@ async def get_users(
         select(
             models.User.id,
             models.User.name,
+            models.User.sar_id,
             models.User.email,
             models.User.resource_type,
             models.User.created_at,
@@ -87,13 +92,16 @@ async def get_users(
     )
 
     result_rows = (await db.execute(stmt)).all()
-
+    print("*******************")
+    print(result_rows)
+    print("*******************")
     return schemas.ListUsersResponse(
         count=count_result,
         items=[
             schemas.ListUsersResponseItem(
                 id=row.id,
                 name=row.name,
+                sar_id=row.sar_id,
                 email=row.email,
                 resource_type=row.resource_type,
                 created_at=row.created_at,
@@ -120,6 +128,8 @@ async def put_user(
 
     user.name = request_data.name
     user.resource_type = request_data.resource_type
+    user.sar_id = request_data.sar_id
+    user.email = request_data.email
 
     await db.commit()
     await db.refresh(user)
@@ -127,6 +137,7 @@ async def put_user(
     return schemas.UpdateUserResponse(
         id=user.id,
         name=user.name,
+        sar_id=user.sar_id,
         email=user.email,
         resource_type=user.resource_type,
         created_at=user.created_at,
