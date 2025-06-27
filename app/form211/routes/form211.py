@@ -6,7 +6,7 @@ from form211 import models
 from form211.routes import schemas
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from timelog import models as timelog_models
+from timelog.models import Timelog as timelog_models
 from user import models as user_models
 
 # /api/v1/user
@@ -191,7 +191,7 @@ async def post_sign_in_form211(
         if user is None:
             sar_id = 0
 
-    timelog = timelog_models.Timelog(
+    timelog = timelog_models(
         form211_id=form211.id,
         name=request_data.name,  # Name is required in the schema
         sar_id=sar_id or 0,
@@ -201,6 +201,61 @@ async def post_sign_in_form211(
     )
 
     db.add(timelog)
+    await db.commit()
+    await db.refresh(timelog)
+
+    return schemas.SignInForm211Response(
+        id=timelog.id,
+        form211_id=timelog.form211_id,
+        created_by=timelog.created_by,
+        sar_id=timelog.sar_id,
+        name=timelog.name,
+        resource_type=timelog.resource_type,
+        arrival_at=timelog.arrival_at,
+        departure_at=timelog.departure_at,
+    )
+
+
+@router.put("/{form211_id}/sign_out/{sar_id}", summary="Sign out to a Form 211")
+async def put_sign_out_form211(
+    db: Annotated[AsyncSession, Depends(get_async_db_session)],
+    form211_id: int,
+    sar_id: int,
+) -> schemas.SignOutForm211Response:
+    # Check that we are loading an active
+    stmt = select(models.Form211).where(
+        models.Form211.id == form211_id,
+        models.Form211.deleted_at.is_(None),
+    )
+
+    form211 = (await db.execute(stmt)).scalar()
+
+    if form211 is None:
+        raise HTTPException(status_code=404, detail="Form 211 not found")
+
+    # See if we can find a user based on the FSAR ID
+    stmt = select(user_models.User).where(
+        user_models.User.sar_id == sar_id,
+        user_models.User.deleted_at.is_(None),
+    )
+    user = (await db.execute(stmt)).scalar()
+
+    if user is None:
+        raise HTTPException(status_code=404, detail="SAR ID not found")
+
+    # find the timelog entry that is not already signed out.
+    stmt = select(timelog_models).where(
+        timelog_models.form211_id == form211_id,
+        timelog_models.sar_id == sar_id,
+        timelog_models.departure_at.is_(None),
+        timelog_models.deleted_at.is_(None),
+    )
+
+    timelog = (await db.execute(stmt)).scalar()
+    if timelog is None:
+        raise HTTPException(status_code=404, detail="User not checked in.")
+
+    timelog.departure_at = func.now()
     await db.commit()
     await db.refresh(timelog)
 
