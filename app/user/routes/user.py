@@ -2,7 +2,7 @@ from typing import Annotated
 
 from db import get_async_db_session
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import String, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from user import models
 from user.routes import schemas
@@ -37,7 +37,7 @@ async def post_create_user(
     )
 
 
-@router.get("/{user_id}", summary="Rrtrieve a user")
+@router.get("/{user_id}", summary="Retrieve a user")
 async def get_user(
     db: Annotated[AsyncSession, Depends(get_async_db_session)],
     user_id: int,
@@ -164,3 +164,37 @@ async def delete_user(
     await db.commit()
     await db.refresh(user)
     return None
+
+
+@router.get("/search_by_id/{sar_id}", summary="Retrieve a user by their sar id")
+async def get_user_by_sar_id(
+    db: Annotated[AsyncSession, Depends(get_async_db_session)],
+    sar_id: int,
+) -> schemas.RetrieveUserResponse:
+    stmt = select(
+        models.User.id,
+        models.User.name,
+        models.User.sar_id,
+        models.User.email,
+        models.User.resource_type,
+        models.User.created_at,
+        models.User.updated_at,
+    ).where(
+        func.cast(models.User.sar_id, String).contains(str(sar_id)),
+        models.User.deleted_at.is_(None),
+    )
+    result_row = (await db.execute(stmt)).first()
+
+    if result_row is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    mapped_row = result_row._mapping
+    return schemas.RetrieveUserResponse(
+        id=mapped_row[models.User.id],
+        name=mapped_row[models.User.name],
+        sar_id=mapped_row[models.User.sar_id],
+        email=mapped_row[models.User.email],
+        resource_type=mapped_row[models.User.resource_type],
+        created_at=mapped_row[models.User.created_at],
+        updated_at=mapped_row[models.User.updated_at],
+    )

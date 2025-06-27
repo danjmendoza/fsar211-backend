@@ -269,3 +269,50 @@ async def put_sign_out_form211(
         arrival_at=timelog.arrival_at,
         departure_at=timelog.departure_at,
     )
+
+
+@router.get("/{form211_id}/arrivals", summary="Retrieve a form 211")
+async def get_form211_arrivals(
+    db: Annotated[AsyncSession, Depends(get_async_db_session)],
+    form211_id: int,
+) -> schemas.ListTimelogResponse:
+    count_stmt = select(func.count(timelog_models.id)).where(
+        timelog_models.form211_id == form211_id, timelog_models.deleted_at.is_(None)
+    )
+    count_result = (await db.execute(count_stmt)).scalar() or 0
+
+    stmt = select(
+        timelog_models.id,
+        timelog_models.form211_id,
+        timelog_models.created_by,
+        timelog_models.sar_id,
+        timelog_models.name,
+        timelog_models.resource_type,
+        timelog_models.arrival_at,
+        timelog_models.departure_at,
+        timelog_models.created_at,
+        timelog_models.updated_at,
+    ).where(
+        timelog_models.form211_id == form211_id, timelog_models.deleted_at.is_(None)
+    )
+
+    result_rows = (await db.execute(stmt)).all()
+
+    return schemas.ListTimelogResponse(
+        count=count_result,
+        items=[
+            schemas.ListTimelogResponseItem(
+                id=row.id,
+                form211_id=row.form211_id,
+                sar_id=row.sar_id,
+                created_by=row.created_by,
+                name=row.name,
+                resource_type=row.resource_type,
+                arrival_at=row.arrival_at,
+                departure_at=row.departure_at,
+                created_at=row.created_at,
+                updated_at=row.updated_at,
+            )
+            for row in result_rows
+        ],
+    )
