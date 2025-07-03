@@ -191,6 +191,19 @@ async def post_sign_in_form211(
         if user is None:
             sar_id = 0
 
+    # Look for an already existing log entry to avoid duplicates.
+    stmt = select(timelog_models).where(
+        timelog_models.form211_id == form211_id,
+        timelog_models.sar_id == sar_id,
+        timelog_models.departure_at.is_(None),
+        timelog_models.deleted_at.is_(None),
+    )
+
+    existing_entry = (await db.execute(stmt)).scalar()
+
+    if existing_entry:
+        raise HTTPException(status_code=404, detail="Use already signed in.")
+
     timelog = timelog_models(
         form211_id=form211.id,
         name=request_data.name,  # Name is required in the schema
