@@ -162,6 +162,35 @@ async def delete_form211(
     return None
 
 
+@router.put("/{form211_id}/close", summary="Close a Form 211")
+async def put_close_form211(
+    db: Annotated[AsyncSession, Depends(get_async_db_session)],
+    form211_id: int,
+) -> schemas.UpdateForm211Response:
+    stmt = select(models.Form211).where(
+        models.Form211.id == form211_id, models.Form211.deleted_at.is_(None)
+    )
+
+    form211 = (await db.execute(stmt)).scalar()
+    if form211 is None:
+        raise HTTPException(status_code=404, detail="Form 211 not found")
+
+    form211.closed_at = func.now()
+
+    await db.commit()
+    await db.refresh(form211)
+
+    return schemas.UpdateForm211Response(
+        id=form211.id,
+        created_by=form211.created_by,
+        name=form211.name,
+        operational_period=form211.operational_period,
+        created_at=form211.created_at,
+        updated_at=form211.updated_at,
+        closed_at=form211.closed_at,
+    )
+
+
 @router.post("/{form211_id}/sign_in", summary="Sign in to a Form 211")
 async def post_sign_in_form211(
     db: Annotated[AsyncSession, Depends(get_async_db_session)],

@@ -17,7 +17,7 @@ class CreateForm211Response(BaseModel):
     operational_period: int
     created_at: datetime
     updated_at: datetime
-    closed_at: datetime
+    closed_at: datetime | None
 
 
 class RetrieveForm211Response(BaseModel):
@@ -27,7 +27,7 @@ class RetrieveForm211Response(BaseModel):
     operational_period: int
     created_at: datetime
     updated_at: datetime
-    closed_at: datetime
+    closed_at: datetime | None
 
 
 class ListForm211ResponseItem(BaseModel):
@@ -37,7 +37,7 @@ class ListForm211ResponseItem(BaseModel):
     operational_period: int
     created_at: datetime
     updated_at: datetime
-    closed_at: datetime
+    closed_at: datetime | None
 
 
 class ListForm211Response(BaseModel):
@@ -46,7 +46,8 @@ class ListForm211Response(BaseModel):
 
 
 class UpdateForm211Request(BaseModel):
-    name: str
+    name: Optional[str] = None
+    closed_at: Optional[datetime] = None
 
 
 class UpdateForm211Response(BaseModel):
@@ -55,7 +56,7 @@ class UpdateForm211Response(BaseModel):
     operational_period: int
     created_at: datetime
     updated_at: datetime
-    closed_at: datetime
+    closed_at: datetime | None
 
 
 class SignInForm211Request(BaseModel):
