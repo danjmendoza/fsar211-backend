@@ -16,9 +16,7 @@ class Form211(Base):
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), nullable=False
     )
-    closed_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(), nullable=True
-    )
+    closed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now(), nullable=False
     )
