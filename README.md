@@ -42,7 +42,7 @@ docker login
 docker build -t wagoneerguy/fsar211-backend:latest .
 docker push wagoneerguy/fsar211-backend:latest
 
-# Login to the production server
+# Login to the production server and test
 
 # Pull the latest version of the image
 docker pull wagoneerguy/fsar211-backend:latest
