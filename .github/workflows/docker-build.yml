@@ -86,28 +86,34 @@ jobs:
         SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_KEY }}
         DEPLOY_HOST: ${{ secrets.PROD_HOST }}
         DEPLOY_USER: ${{ secrets.PROD_SSH_USER }}
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
       run: |
-        # Function to send Slack notification
-        notify_slack() {
-          if [ -n "$SLACK_WEBHOOK" ]; then
-            curl -X POST -H 'Content-type: application/json' \
-              --data "{\"text\":\"$1\"}" \
-              $SLACK_WEBHOOK
-          fi
-        }
-
         # Function to handle errors
         handle_error() {
           error_message="$1"
           echo "::error::$error_message"
-          notify_slack ":x: Deployment failed: $error_message"
           exit 1
         }
 
-        notify_slack ":rocket: Starting deployment of fsar211-backend..."
-
         # Deploy with error handling
+        # Create environment variables file on the server
+        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new $DEPLOY_USER@$DEPLOY_HOST << 'ENDSSH' || handle_error "Failed to create environment file"
+          # Create environment file with restricted permissions
+          sudo touch /tmp/backend.env
+          sudo chown $USER:$USER /tmp/backend.env
+          chmod 600 /tmp/backend.env
+          
+          # Write environment variables
+          cat > /tmp/backend.env << EOF
+          DATABASE_URL=${DATABASE_URL}
+          SECRET_KEY=${SECRET_KEY}
+          ENVIRONMENT=production
+          CORS_ORIGINS=https://211.fremontsar.com
+          EOF
+        ENDSSH
+
+        # Continue with deployment
         ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new $DEPLOY_USER@$DEPLOY_HOST << 'ENDSSH' || handle_error "Deployment failed"
           set -e  # Exit on any error
 
